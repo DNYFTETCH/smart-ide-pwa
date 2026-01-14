@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevFlow IDE - Smart Development Environment</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0e27">
+    <meta name="description" content="A smart, powerful IDE for modern web development">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Monaco Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #141829;
+            --bg-tertiary: #1a1f3a;
+            --bg-elevated: #242942;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7b2ff7;
+            --accent-tertiary: #f72585;
+            --text-primary: #e8eaf0;
+            --text-secondary: #9ca3bc;
+            --text-tertiary: #6b7280;
+            --border-color: #2d3348;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+            --glow-accent: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(123, 47, 247, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(247, 37, 133, 0.06) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes bgShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .app-container {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .top-bar {
+            height: 56px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+        
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+        
+        .top-bar-actions {
+            display: flex;
+            gap: 12px;
+            margin-left: auto;
+            align-items: center;
+        }
+        
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+        
+        .icon-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--accent-primary);
+            transform: translateY(-1px);
+        }
+        
+        .icon-btn.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            box-shadow: var(--glow-accent);
+        }
+        
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 60px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 20px;
+            position: relative;
+        }
+        
+        .sidebar-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .sidebar-btn.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-primary);
+        }
+        
+        .sidebar-btn.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 0 2px 2px 0;
+        }
+        
+        .explorer-panel {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .explorer-panel.hidden {
+            transform: translateX(-100%);
+            width: 0;
+        }
+        
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+        
+        .panel-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .panel-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .panel-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .file-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        
+        .file-item {
+            padding: 8px 20px 8px 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            position: relative;
+        }
+        
+        .file-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .file-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-primary);
+        }
+        
+        .file-item.folder {
+            font-weight: 500;
+            padding-left: 20px;
+        }
+        
+        .file-item .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .tabs-container {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s;
+            position: relative;
+            min-width: 160px;
+        }
+        
+        .tab:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+        
+        .tab.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+        }
+        
+        .tab-close {
+            margin-left: auto;
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.6;
+            transition: all 0.2s;
+        }
+        
+        .tab-close:hover {
+            opacity: 1;
+            background: var(--bg-secondary);
+        }
+        
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .split-view {
+            display: flex;
+            height: 100%;
+        }
+        
+        .split-pane {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .split-divider {
+            width: 4px;
+            background: var(--border-color);
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+        
+        .split-divider:hover {
+            background: var(--accent-primary);
+        }
+        
+        .preview-panel {
+            background: white;
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .terminal-panel {
+            height: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: height 0.3s;
+            overflow: hidden;
+        }
+        
+        .terminal-panel.open {
+            height: 250px;
+        }
+        
+        .terminal-header {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-tertiary);
+        }
+        
+        .terminal-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .terminal-output {
+            flex: 1;
+            padding: 16px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-y: auto;
+            color: var(--text-secondary);
+        }
+        
+        .terminal-input-container {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            gap: 10px;
+        }
+        
+        .terminal-prompt {
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            outline: none;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            width: 90%;
+            max-width: 500px;
+            animation: slideUp 0.3s;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--glow-accent);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+        
+        .status-bar {
+            height: 28px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            gap: 20px;
+            flex-shrink: 0;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .status-item.clickable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .status-item.clickable:hover {
+            color: var(--accent-primary);
+        }
+        
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-elevated);
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-color);
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            transition: opacity 0.5s;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .context-menu {
+            position: fixed;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            min-width: 200px;
+            display: none;
+            z-index: 1001;
+        }
+        
+        .context-menu.active {
+            display: block;
+        }
+        
+        .context-menu-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+        }
+        
+        .context-menu-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .context-menu-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 6px 0;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 1002;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+        }
+        
+        .toast-content {
+            flex: 1;
+        }
+        
+        .toast-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+        
+        .toast.error .toast-icon {
+            color: var(--error);
+        }
+        
+        .toast.warning .toast-icon {
+            color: var(--warning);
+        }
+        
+        .command-palette {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            width: 90%;
+            max-width: 600px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            flex-direction: column;
+            z-index: 1003;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+        
+        .command-palette.active {
+            display: flex;
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+        
+        .command-input {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .command-input input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+        }
+        
+        .command-list {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        
+        .command-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.15s;
+        }
+        
+        .command-item:hover,
+        .command-item.selected {
+            background: var(--bg-tertiary);
+        }
+        
+        .command-item-icon {
+            font-size: 18px;
+            color: var(--accent-primary);
+        }
+        
+        .command-item-text {
+            flex: 1;
+        }
+        
+        .command-item-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .command-item-desc {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+        
+        .command-item-shortcut {
+            font-size: 11px;
+            padding: 4px 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">DevFlow</div>
+        <div class="loading-text">Initializing workspace...</div>
+    </div>
+
+    <div class="app-container">
+        <div class="top-bar">
+            <div class="logo">DevFlow</div>
+            <div class="top-bar-actions">
+                <button class="icon-btn" id="searchBtn" title="Search (Ctrl+P)">🔍</button>
+                <button class="icon-btn" id="gitBtn" title="Git">🌿</button>
+                <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+                <button class="icon-btn" id="themeBtn" title="Toggle Theme">🌙</button>
+            </div>
+        </div>
+
+        <div class="workspace">
+            <div class="sidebar">
+                <button class="sidebar-btn active" data-panel="explorer" title="Explorer">📁</button>
+                <button class="sidebar-btn" data-panel="search" title="Search">🔍</button>
+                <button class="sidebar-btn" data-panel="git" title="Source Control">🌿</button>
+                <button class="sidebar-btn" data-panel="extensions" title="Extensions">🧩</button>
+                <button class="sidebar-btn" data-panel="snippets" title="Snippets">✂️</button>
+            </div>
+
+            <div class="explorer-panel" id="explorerPanel">
+                <div class="panel-header">
+                    <div class="panel-title">Explorer</div>
+                    <div class="panel-actions">
+                        <button class="panel-btn" id="newFileBtn" title="New File">📄</button>
+                        <button class="panel-btn" id="newFolderBtn" title="New Folder">📁</button>
+                        <button class="panel-btn" id="refreshBtn" title="Refresh">🔄</button>
+                    </div>
+                </div>
+                <div class="file-tree" id="fileTree">
+                    <div class="file-item folder">
+                        <span class="icon">📁</span>
+                        <span>src</span>
+                    </div>
+                    <div class="file-item" data-file="index.html">
+                        <span class="icon">📄</span>
+                        <span>index.html</span>
+                    </div>
+                    <div class="file-item" data-file="style.css">
+                        <span class="icon">🎨</span>
+                        <span>style.css</span>
+                    </div>
+                    <div class="file-item" data-file="script.js">
+                        <span class="icon">📜</span>
+                        <span>script.js</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-area">
+                <div class="tabs-container" id="tabsContainer">
+                    <div class="tab active" data-file="index.html">
+                        <span>📄</span>
+                        <span>index.html</span>
+                        <span class="tab-close">×</span>
+                    </div>
+                </div>
+
+                <div class="editor-container">
+                    <div class="split-view" id="splitView">
+                        <div class="split-pane">
+                            <div id="editor"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="terminal-panel" id="terminalPanel">
+                    <div class="terminal-header">
+                        <div class="terminal-title">
+                            <span>⚡</span>
+                            <span>Terminal</span>
+                        </div>
+                        <button class="panel-btn" id="clearTerminalBtn" title="Clear">🗑️</button>
+                    </div>
+                    <div class="terminal-output" id="terminalOutput">
+                        <div style="color: var(--accent-primary);">Welcome to DevFlow IDE Terminal</div>
+                        <div>Type 'help' for available commands</div>
+                        <div style="margin-top: 12px;"></div>
+                    </div>
+                    <div class="terminal-input-container">
+                        <span class="terminal-prompt">$</span>
+                        <input type="text" class="terminal-input" id="terminalInput" placeholder="Enter command...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span>📍</span>
+                <span id="cursorPosition">Ln 1, Col 1</span>
+            </div>
+            <div class="status-item">
+                <span>📝</span>
+                <span id="fileEncoding">UTF-8</span>
+            </div>
+            <div class="status-item">
+                <span>🔤</span>
+                <span id="fileLanguage">HTML</span>
+            </div>
+            <div class="status-item clickable" id="previewBtn">
+                <span>👁️</span>
+                <span>Preview</span>
+            </div>
+            <div class="status-item clickable" id="terminalBtn">
+                <span>⚡</span>
+                <span>Terminal</span>
+            </div>
+            <div style="margin-left: auto;" class="status-item">
+                <span>⚡</span>
+                <span id="statusMessage">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="newFileModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Create New File</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">File Name</label>
+                    <input type="text" class="form-input" id="newFileName" placeholder="example.js">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">File Type</label>
+                    <select class="form-select" id="newFileType">
+                        <option value="javascript">JavaScript</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="json">JSON</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="python">Python</option>
+                        <option value="typescript">TypeScript</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelNewFile">Cancel</button>
+                <button class="btn btn-primary" id="confirmNewFile">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="command-palette" id="commandPalette">
+        <div class="command-input">
+            <input type="text" placeholder="Type a command or search..." id="commandInput">
+        </div>
+        <div class="command-list" id="commandList">
+            <div class="command-item" data-command="newFile">
+                <div class="command-item-icon">📄</div>
+                <div class="command-item-text">
+                    <div class="command-item-title">New File</div>
+                    <div class="command-item-desc">Create a new file</div>
+                </div>
+                <div class="command-item-shortcut">Ctrl+N</div>
+            </div>
+            <div class="command-item" data-command="saveFile">
+                <div class="command-item-icon">💾</div>
+                <div class="command-item-text">
+                    <div class="command-item-title">Save File</div>
+                    <div class="command-item-desc">Save current file</div>
+                </div>
+                <div class="command-item-shortcut">Ctrl+S</div>
+            </div>
+            <div class="command-item" data-command="preview">
+                <div class="command-item-icon">👁️</div>
+                <div class="command-item-text">
+                    <div class="command-item-title">Toggle Preview</div>
+                    <div class="command-item-desc">Show/hide live preview</div>
+                </div>
+                <div class="command-item-shortcut">Ctrl+Shift+P</div>
+            </div>
+            <div class="command-item" data-command="terminal">
+                <div class="command-item-icon">⚡</div>
+                <div class="command-item-text">
+                    <div class="command-item-title">Toggle Terminal</div>
+                    <div class="command-item-desc">Show/hide terminal</div>
+                </div>
+                <div class="command-item-shortcut">Ctrl+`</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <div class="toast-icon">✓</div>
+        <div class="toast-content">
+            <div class="toast-title" id="toastTitle">Success</div>
+            <div class="toast-message" id="toastMessage">Operation completed</div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" data-action="copy">📋 Copy</div>
+        <div class="context-menu-item" data-action="paste">📄 Paste</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="format">✨ Format Code</div>
+        <div class="context-menu-item" data-action="comment">💬 Toggle Comment</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    
+    <script>
+        const config = {
+            theme: 'vs-dark',
+            fontSize: 14,
+            fontFamily: 'JetBrains Mono, monospace',
+            tabSize: 2,
+            autoSave: true
+        };
+
+        const state = {
+            currentFile: 'index.html',
+            files: {
+                'index.html': {
+                    content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Project</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to DevFlow IDE</h1>
+        <p>Start building amazing projects!</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>`,
+                    language: 'html'
+                },
+                'style.css': {
+                    content: `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    background: white;
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+h1 {
+    color: #667eea;
+    margin-bottom: 1rem;
+    font-size: 2.5rem;
+}
+
+p {
+    color: #666;
+    font-size: 1.2rem;
+}`,
+                    language: 'css'
+                },
+                'script.js': {
+                    content: `// Welcome to DevFlow IDE
+console.log('DevFlow IDE initialized successfully!');
+
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.querySelector('.container');
+    
+    container.addEventListener('click', () => {
+        console.log('Container clicked!');
+    });
+});`,
+                    language: 'javascript'
+                }
+            },
+            openTabs: ['index.html'],
+            previewOpen: false,
+            terminalOpen: false,
+            editor: null
+        };
+
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+        
+        require(['vs/editor/editor.main'], function () {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }, 1000);
+
+            state.editor = monaco.editor.create(document.getElementById('editor'), {
+                value: state.files[state.currentFile].content,
+                language: state.files[state.currentFile].language,
+                theme: 'vs-dark',
+                fontSize: config.fontSize,
+                fontFamily: config.fontFamily,
+                tabSize: config.tabSize,
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                smoothScrolling: true,
+                cursorBlinking: 'smooth',
+                cursorSmoothCaretAnimation: 'on',
+                fontLigatures: true,
+                renderWhitespace: 'selection',
+                bracketPairColorization: { enabled: true },
+                guides: {
+                    bracketPairs: true,
+                    indentation: true
+                }
+            });
+
+            state.editor.onDidChangeCursorPosition((e) => {
+                document.getElementById('cursorPosition').textContent = 
+                    `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+            });
+
+            state.editor.onDidChangeModelContent(() => {
+                if (config.autoSave) {
+                    state.files[state.currentFile].content = state.editor.getValue();
+                    updatePreview();
+                }
+            });
+
+            initializeApp();
+        });
+
+        function initializeApp() {
+            document.querySelectorAll('.file-item[data-file]').forEach(item => {
+                item.addEventListener('click', () => {
+                    const fileName = item.dataset.file;
+                    openFile(fileName);
+                });
+            });
+
+            document.getElementById('tabsContainer').addEventListener('click', (e) => {
+                const tab = e.target.closest('.tab');
+                if (tab) {
+                    const fileName = tab.dataset.file;
+                    switchToFile(fileName);
+                }
+                
+                if (e.target.classList.contains('tab-close')) {
+                    e.stopPropagation();
+                    closeTab(tab.dataset.file);
+                }
+            });
+
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+
+            document.getElementById('newFileBtn').addEventListener('click', () => {
+                document.getElementById('newFileModal').classList.add('active');
+                document.getElementById('newFileName').focus();
+            });
+
+            document.getElementById('cancelNewFile').addEventListener('click', () => {
+                document.getElementById('newFileModal').classList.remove('active');
+            });
+
+            document.getElementById('confirmNewFile').addEventListener('click', () => {
+                const fileName = document.getElementById('newFileName').value;
+                if (fileName) {
+                    createNewFile(fileName);
+                    document.getElementById('newFileModal').classList.remove('active');
+                    document.getElementById('newFileName').value = '';
+                }
+            });
+
+            document.getElementById('previewBtn').addEventListener('click', togglePreview);
+            document.getElementById('terminalBtn').addEventListener('click', toggleTerminal);
+
+            document.getElementById('terminalInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    executeCommand(e.target.value);
+                    e.target.value = '';
+                }
+            });
+
+            document.getElementById('clearTerminalBtn').addEventListener('click', () => {
+                document.getElementById('terminalOutput').innerHTML = '';
+            });
+
+            document.getElementById('searchBtn').addEventListener('click', toggleCommandPalette);
+            document.getElementById('commandInput').addEventListener('input', filterCommands);
+
+            document.querySelectorAll('.command-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    executeCommandPaletteAction(item.dataset.command);
+                });
+            });
+
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('#editor')) {
+                    e.preventDefault();
+                    showContextMenu(e.pageX, e.pageY);
+                }
+            });
+
+            document.addEventListener('click', () => {
+                hideContextMenu();
+            });
+
+            setInterval(saveToLocalStorage, 30000);
+            loadFromLocalStorage();
+        }
+
+        function openFile(fileName) {
+            if (!state.files[fileName]) return;
+            
+            if (!state.openTabs.includes(fileName)) {
+                state.openTabs.push(fileName);
+                addTab(fileName);
+            }
+            
+            switchToFile(fileName);
+        }
+
+        function switchToFile(fileName) {
+            state.currentFile = fileName;
+            const file = state.files[fileName];
+            
+            state.editor.setValue(file.content);
+            monaco.editor.setModelLanguage(state.editor.getModel(), file.language);
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.file === fileName);
+            });
+            
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.file === fileName);
+            });
+            
+            document.getElementById('fileLanguage').textContent = file.language.toUpperCase();
+            
+            updatePreview();
+        }
+
+        function addTab(fileName) {
+            const icon = getFileIcon(fileName);
+            const tab = document.createElement('div');
+            tab.className = 'tab';
+            tab.dataset.file = fileName;
+            tab.innerHTML = `
+                <span>${icon}</span>
+                <span>${fileName}</span>
+                <span class="tab-close">×</span>
+            `;
+            document.getElementById('tabsContainer').appendChild(tab);
+        }
+
+        function closeTab(fileName) {
+            const index = state.openTabs.indexOf(fileName);
+            if (index > -1) {
+                state.openTabs.splice(index, 1);
+                document.querySelector(`.tab[data-file="${fileName}"]`).remove();
+                
+                if (state.currentFile === fileName && state.openTabs.length > 0) {
+                    switchToFile(state.openTabs[state.openTabs.length - 1]);
+                }
+            }
+        }
+
+        function createNewFile(fileName) {
+            const ext = fileName.split('.').pop();
+            const language = getLanguageFromExtension(ext);
+            
+            state.files[fileName] = {
+                content: '',
+                language: language
+            };
+            
+            const fileTree = document.getElementById('fileTree');
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.file = fileName;
+            fileItem.innerHTML = `
+                <span class="icon">${getFileIcon(fileName)}</span>
+                <span>${fileName}</span>
+            `;
+            fileTree.appendChild(fileItem);
+            
+            fileItem.addEventListener('click', () => openFile(fileName));
+            
+            openFile(fileName);
+            showToast('File Created', `${fileName} created successfully`, 'success');
+        }
+
+        function togglePreview() {
+            state.previewOpen = !state.previewOpen;
+            const splitView = document.getElementById('splitView');
+            
+            if (state.previewOpen) {
+                splitView.innerHTML = `
+                    <div class="split-pane">
+                        <div id="editor"></div>
+                    </div>
+                    <div class="split-divider"></div>
+                    <div class="split-pane">
+                        <iframe class="preview-panel" id="preview"></iframe>
+                    </div>
+                `;
+                
+                const currentContent = state.editor.getValue();
+                state.editor.dispose();
+                
+                state.editor = monaco.editor.create(splitView.querySelector('#editor'), {
+                    value: currentContent,
+                    language: state.files[state.currentFile].language,
+                    theme: 'vs-dark',
+                    fontSize: config.fontSize,
+                    fontFamily: config.fontFamily,
+                    tabSize: config.tabSize,
+                    minimap: { enabled: true },
+                    automaticLayout: true
+                });
+                
+                updatePreview();
+            } else {
+                const currentContent = state.editor.getValue();
+                state.editor.dispose();
+                
+                splitView.innerHTML = `<div class="split-pane"><div id="editor"></div></div>`;
+                
+                state.editor = monaco.editor.create(document.getElementById('editor'), {
+                    value: currentContent,
+                    language: state.files[state.currentFile].language,
+                    theme: 'vs-dark',
+                    fontSize: config.fontSize,
+                    fontFamily: config.fontFamily,
+                    tabSize: config.tabSize,
+                    minimap: { enabled: true },
+                    automaticLayout: true
+                });
+            }
+        }
+
+        function updatePreview() {
+            if (!state.previewOpen) return;
+            
+            const preview = document.getElementById('preview');
+            if (!preview) return;
+            
+            const html = state.files['index.html']?.content || '';
+            const css = state.files['style.css']?.content || '';
+            const js = state.files['script.js']?.content || '';
+            
+            const previewContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>${css}</style>
+                </head>
+                <body>
+                    ${html.replace(/<script.*?src=.*?<\/script>/g, '')}
+                    <script>${js}</script>
+                </body>
+                </html>
+            `;
+            
+            preview.srcdoc = previewContent;
+        }
+
+        function toggleTerminal() {
+            state.terminalOpen = !state.terminalOpen;
+            const terminal = document.getElementById('terminalPanel');
+            terminal.classList.toggle('open', state.terminalOpen);
+            
+            if (state.terminalOpen) {
+                document.getElementById('terminalInput').focus();
+            }
+        }
+
+        function executeCommand(cmd) {
+            const output = document.getElementById('terminalOutput');
+            const commandLine = document.createElement('div');
+            commandLine.innerHTML = `<span style="color: var(--accent-primary);">$ ${cmd}</span>`;
+            output.appendChild(commandLine);
+            
+            const result = document.createElement('div');
+            result.style.marginBottom = '12px';
+            
+            switch(cmd.toLowerCase().trim()) {
+                case 'help':
+                    result.innerHTML = `Available commands:<br>- help: Show this help<br>- clear: Clear terminal<br>- ls: List files<br>- pwd: Print working directory<br>- git status: Show git status`;
+                    break;
+                case 'ls':
+                    result.textContent = Object.keys(state.files).join('  ');
+                    break;
+                case 'pwd':
+                    result.textContent = '/workspace/my-project';
+                    break;
+                case 'clear':
+                    output.innerHTML = '';
+                    return;
+                case 'git status':
+                    result.innerHTML = `On branch main<br>nothing to commit, working tree clean`;
+                    result.style.color = 'var(--success)';
+                    break;
+                default:
+                    result.textContent = `Command not found: ${cmd}`;
+                    result.style.color = 'var(--error)';
+            }
+            
+            output.appendChild(result);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function toggleCommandPalette() {
+            const palette = document.getElementById('commandPalette');
+            const overlay = document.getElementById('newFileModal');
+            
+            if (palette.classList.contains('active')) {
+                palette.classList.remove('active');
+                overlay.classList.remove('active');
+            } else {
+                palette.classList.add('active');
+                overlay.classList.add('active');
+                document.getElementById('commandInput').focus();
+            }
+        }
+
+        function filterCommands() {
+            const query = document.getElementById('commandInput').value.toLowerCase();
+            const items = document.querySelectorAll('.command-item');
+            
+            items.forEach(item => {
+                const title = item.querySelector('.command-item-title').textContent.toLowerCase();
+                const desc = item.querySelector('.command-item-desc').textContent.toLowerCase();
+                item.style.display = (title.includes(query) || desc.includes(query)) ? 'flex' : 'none';
+            });
+        }
+
+        function executeCommandPaletteAction(command) {
+            toggleCommandPalette();
+            
+            switch(command) {
+                case 'newFile':
+                    document.getElementById('newFileBtn').click();
+                    break;
+                case 'saveFile':
+                    saveToLocalStorage();
+                    showToast('Saved', 'File saved successfully', 'success');
+                    break;
+                case 'preview':
+                    togglePreview();
+                    break;
+                case 'terminal':
+                    toggleTerminal();
+                    break;
+            }
+        }
+
+        function handleKeyboardShortcuts(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                toggleCommandPalette();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                document.getElementById('newFileBtn').click();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveToLocalStorage();
+                showToast('Saved', 'File saved successfully', 'success');
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+                e.preventDefault();
+                toggleTerminal();
+            }
+            
+            if (e.key === 'Escape') {
+                document.getElementById('newFileModal').classList.remove('active');
+                document.getElementById('commandPalette').classList.remove('active');
+            }
+        }
+
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('contextMenu');
+            menu.classList.add('active');
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function showToast(title, message, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+            
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function getFileIcon(fileName) {
+            const ext = fileName.split('.').pop();
+            const iconMap = {
+                'html': '📄',
+                'css': '🎨',
+                'js': '📜',
+                'json': '📋',
+                'md': '📝',
+                'py': '🐍',
+                'ts': '📘'
+            };
+            return iconMap[ext] || '📄';
+        }
+
+        function getLanguageFromExtension(ext) {
+            const langMap = {
+                'html': 'html',
+                'css': 'css',
+                'js': 'javascript',
+                'json': 'json',
+                'md': 'markdown',
+                'py': 'python',
+                'ts': 'typescript'
+            };
+            return langMap[ext] || 'plaintext';
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('devflow-files', JSON.stringify(state.files));
+            localStorage.setItem('devflow-openTabs', JSON.stringify(state.openTabs));
+            localStorage.setItem('devflow-currentFile', state.currentFile);
+        }
+
+        function loadFromLocalStorage() {
+            const files = localStorage.getItem('devflow-files');
+            const openTabs = localStorage.getItem('devflow-openTabs');
+            const currentFile = localStorage.getItem('devflow-currentFile');
+            
+            if (files) state.files = JSON.parse(files);
+            if (openTabs) state.openTabs = JSON.parse(openTabs);
+            if (currentFile) state.currentFile = currentFile;
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
